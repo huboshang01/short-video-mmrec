@@ -4,7 +4,7 @@
 
 项目以 KuaiRec 等公开短视频推荐数据集为基础，首先完成短视频内容语义召回的最小闭环；随后引入用户观看行为监督，训练 Behavior-Aware Semantic Adapter，实现 item 内容语义与用户兴趣行为的对齐；进一步扩展视频帧视觉编码模块，将文本语义、视频帧视觉特征与用户行为信号融合，用于短视频搜索推荐场景下的语义召回与个性化推荐。
 
-## Project Roadmap
+## 项目路线图
 
 当前项目主干分为三个阶段：
 
@@ -64,7 +64,7 @@ V3 的目标是将 item 表征从纯文本语义扩展为图文视频多模态�
 
 ---
 
-## Future Extensions
+## 后续优化规划
 
 在完成 V1-V3 主干后，项目可继续扩展以下方向：
 
@@ -73,7 +73,7 @@ V3 的目标是将 item 表征从纯文本语义扩展为图文视频多模态�
 - 在 FAISS 召回结果上加入轻量级 reranker，结合 user embedding、item embedding、watch_ratio、category、popularity 等特征进行重排序；
 - 构建面向短视频推荐的 conversational recommender demo，实现自然语言意图理解、语义召回和推荐理由生成。
 
-## Project Positioning
+## 项目定位
 
 本项目重点不在于复现完整工业推荐系统中的召回、粗排、精排、重排和在线 A/B 流程，而是聚焦于短视频推荐场景中的 **多模态内容理解与语义召回**。
 
