@@ -45,7 +45,7 @@ data/raw/
 ## 4. 项目结构
 
 ```text
-short-video-mmrec-v1/
+short-video-mmrec/
 ├── README.md
 ├── requirements-v1.txt
 ├── .gitignore
