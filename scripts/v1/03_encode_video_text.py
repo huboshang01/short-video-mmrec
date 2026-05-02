@@ -8,7 +8,7 @@ import torch
 from sentence_transformers import SentenceTransformer
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 EMB_DIR = PROJECT_ROOT / "outputs" / "embeddings"
 EMB_DIR.mkdir(parents=True, exist_ok=True)

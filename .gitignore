@@ -1,34 +1,34 @@
 # Python
 __pycache__/
-*.py[cod]
-*.so
-
-# Jupyter
+*.pyc
+*.pyo
+*.pyd
 .ipynb_checkpoints/
 
-# Environment
-.env
+# Environments
 .venv/
 venv/
-*.egg-info/
+env/
+*.env
 
-# Data
+# Raw and processed data
 data/raw/
-data/processed/
+data/processed/*.csv
 
-# Outputs
+# Outputs and generated artifacts
 outputs/
+checkpoints/
+logs/
+wandb/
+
+# Large files
 *.pt
 *.pth
-*.pkl
+*.ckpt
 *.npy
 *.npz
+*.pkl
 *.index
 
 # System
 .DS_Store
-Thumbs.db
-
-# Logs
-*.log
-logs/

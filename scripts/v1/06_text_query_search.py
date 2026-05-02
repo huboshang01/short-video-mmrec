@@ -10,7 +10,7 @@ import torch
 from sentence_transformers import SentenceTransformer
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 EMB_DIR = PROJECT_ROOT / "outputs" / "embeddings"
 INDEX_DIR = PROJECT_ROOT / "outputs" / "indexes"
 REPORT_DIR = PROJECT_ROOT / "outputs" / "reports"
