@@ -1,236 +1,84 @@
-# SV-Recall V1: 基于 KuaiRec 的短视频内容语义召回与用户兴趣推荐最小闭环
+# Short-Video MMRec: 面向短视频搜索推荐的多模态内容理解与语义召回系统
 
-本项目是“面向短视频搜索推荐的多模态内容理解与语义召回系统”的 V1 版本，基于 KuaiRec 数据集完成短视频内容语义召回的最小闭环实现。
+本项目面向短视频搜索推荐业务，围绕 **内容语义表征、用户行为建模、多模态内容理解与语义召回** 等核心问题，构建一个从静态文本语义召回 baseline，逐步演进到行为监督召回模型与图文视频多模态 item 表征的工程化系统。
 
-V1 重点不在于构建完整工业推荐系统，而是完成从视频文本字段构造、文本向量编码、FAISS 语义索引、相似视频召回、文本 Query 检索、用户兴趣推荐到基础指标评估的完整流程。
+项目以 KuaiRec 等公开短视频推荐数据集为基础，首先完成短视频内容语义召回的最小闭环；随后引入用户观看行为监督，训练 Behavior-Aware Semantic Adapter，实现 item 内容语义与用户兴趣行为的对齐；进一步扩展视频帧视觉编码模块，将文本语义、视频帧视觉特征与用户行为信号融合，用于短视频搜索推荐场景下的语义召回与个性化推荐。
 
-## 1. 项目目标
+## Project Roadmap
 
-本项目面向短视频搜索推荐场景，完成以下能力：
+当前项目主干分为三个阶段：
 
-- 基于视频 caption、topic_tag、category 等字段构造视频语义文本；
-- 使用文本 embedding 模型编码短视频内容语义；
-- 使用 FAISS 构建视频语义向量索引；
-- 实现 item-to-item 相似视频召回；
-- 实现 text-to-video 文本 Query 检索；
-- 实现基于用户高 watch_ratio 历史视频的用户兴趣推荐；
-- 使用 Recall@K、HitRate@K、NDCG@K 进行基础离线评估。
+### V1: Text-based Semantic Recall Baseline
 
-## 2. 技术栈
+基于 KuaiRec small matrix 构建短视频内容语义召回最小闭环。
 
-- Python 3.10
-- PyTorch
-- pandas / numpy / scikit-learn
-- sentence-transformers
-- FAISS
-- KuaiRec 2.0
-- WSL2 Ubuntu
+核心内容包括：
 
-## 3. 数据集
-
-本项目使用 KuaiRec 数据集中的：
+- 文本字段清洗与拼接
+- 短视频文本语义编码
+- FAISS 向量索引构建
+- 相似视频检索
+- 基于用户历史行为的兴趣向量推荐
+- semantic / popularity / random baseline 对比
+- Recall@K、HitRate@K 等基础指标评估
 
-- `small_matrix.csv`：用户-视频交互数据；
-- `kuairec_caption_category.csv`：视频 caption、topic_tag 和多级类目信息；
-- `item_categories.csv`：视频标签信息，可用于后续扩展。
+V1 的目标是完成从 item 内容字段编码、向量检索、相似视频召回到用户兴趣推荐的完整 baseline，为后续行为监督训练和多模态扩展提供工程基础。
 
-由于数据集和中间向量文件较大，本仓库不直接上传原始数据和生成的 embedding/index 文件。请用户自行下载 KuaiRec 数据集，并放置到：
+---
 
-```text
-data/raw/
-```
+### V2: Behavior-Aware Semantic Adapter
 
-本项目默认会在 `data/raw/` 下自动查找所需 CSV 文件。
+在 V1 静态文本语义召回基础上，引入更强文本语义表征和用户行为监督，训练面向短视频推荐任务的语义召回模型。
 
-## 4. 项目结构
+核心内容包括：
 
-```text
-short-video-mmrec-v1/
-├── README.md
-├── requirements-v1.txt
-├── .gitignore
-├── configs/
-├── scripts/
-│   ├── 00_check_env.py
-│   ├── 01_check_data.py
-│   ├── 02_build_video_text.py
-│   ├── 03_encode_video_text.py
-│   ├── 04_build_faiss_index.py
-│   ├── 05_similar_video.py
-│   ├── 06_text_query_search.py
-│   ├── 07_user_interest_recommend.py
-│   └── 08_eval_recall_metrics.py
-├── data/
-│   ├── raw/
-│   └── processed/
-└── outputs/
-    ├── embeddings/
-    ├── indexes/
-    └── reports/
-```
+- BGE / sentence-transformers 文本语义表征
+- embedding cache 构建与复用
+- item encoder / semantic adapter
+- user encoder
+- watch_ratio 加权用户兴趣建模
+- InfoNCE + MSE + CE 多任务训练
+- 行为监督下的 user-item 语义对齐
+- Recall@K、NDCG@K、Avg WatchRatio@K、Category Hit@K 等召回评估
 
-## 5. 环境安装
+V2 的目标是将 V1 中冻结的静态文本 embedding，升级为经过用户行为监督适配的 behavior-aware semantic representation，使召回结果不仅具备内容语义相关性，也能够反映用户观看偏好。
 
-```bash
-conda create -n kuairec_v1 python=3.10 -y
-conda activate kuairec_v1
-pip install -r requirements-v1.txt
-```
+---
 
-检查环境：
+### V3: Multimodal Video-Text Item Representation
 
-```bash
-python scripts/00_check_env.py
-```
+在 V2 行为监督语义召回基础上，进一步引入视频帧视觉特征，构建图文视频融合的多模态 item 表征。
 
-## 6. V1 运行流程
+核心内容包括：
 
-### Step 1: 检查数据
+- 视频抽帧 / 封面图处理
+- CLIP image encoder 提取视觉语义特征
+- 帧级特征聚合
+- 文本语义特征与视觉帧特征融合
+- multimodal item representation 构建
+- 多模态表征接入语义召回流程
 
-```bash
-python scripts/01_check_data.py
-```
+V3 的目标是将 item 表征从纯文本语义扩展为图文视频多模态语义表示，进一步增强短视频内容理解能力，使系统能够同时利用文本字段和视觉内容进行语义召回。
 
-### Step 2: 构造视频文本字段
+> 说明：由于 KuaiRec 等公开推荐数据集通常不直接提供原始视频流或完整视频帧，V3 中的视频帧理解模块将以外部公开视频数据集、样例视频或可插拔多模态模块的方式进行验证，并作为后续真实短视频业务场景中的 item encoder 扩展组件。
 
-```bash
-python scripts/02_build_video_text.py
-```
+---
 
-输出：
+## Future Extensions
 
-```text
-data/processed/video_text.csv
-```
+在完成 V1-V3 主干后，项目可继续扩展以下方向：
 
-### Step 3: 文本向量编码
+- 引入 Qwen2.5-VL / InternVL 等多模态大模型，对视频封面或关键帧生成视觉描述，并将生成描述接入语义召回系统；
+- 构建 query-to-video 的自然语言检索模块，支持用户通过自然语言表达兴趣需求；
+- 在 FAISS 召回结果上加入轻量级 reranker，结合 user embedding、item embedding、watch_ratio、category、popularity 等特征进行重排序；
+- 构建面向短视频推荐的 conversational recommender demo，实现自然语言意图理解、语义召回和推荐理由生成。
 
-```bash
-python scripts/03_encode_video_text.py \
-  --model-name BAAI/bge-small-zh-v1.5 \
-  --batch-size 64 \
-  --device auto \
-  --normalize
-```
+## Project Positioning
 
-输出：
+本项目重点不在于复现完整工业推荐系统中的召回、粗排、精排、重排和在线 A/B 流程，而是聚焦于短视频推荐场景中的 **多模态内容理解与语义召回**。
 
-```text
-outputs/embeddings/video_text_embeddings.npy
-outputs/embeddings/video_ids.npy
-outputs/embeddings/video_text_meta.csv
-outputs/embeddings/embedding_config.json
-```
+项目核心关注：
 
-### Step 4: 构建 FAISS 语义索引
-
-```bash
-python scripts/04_build_faiss_index.py --metric cosine
-```
-
-输出：
-
-```text
-outputs/indexes/video_text_faiss.index
-outputs/indexes/faiss_index_config.json
-```
-
-### Step 5: 相似视频召回
-
-```bash
-python scripts/05_similar_video.py --video-id 0 --topk 10
-```
-
-该步骤实现 item-to-item semantic recall，即输入一个视频 ID，召回语义相似的视频。
-
-### Step 6: 文本 Query 检索
-
-```bash
-python scripts/06_text_query_search.py --query "篮球教学" --topk 10
-```
-
-该步骤实现 text-to-video semantic retrieval，即输入用户搜索词，召回语义相关的视频。
-
-### Step 7: 用户兴趣推荐
-
-```bash
-python scripts/07_user_interest_recommend.py \
-  --user-id 0 \
-  --topk 10 \
-  --pos-threshold 1.0 \
-  --max-history 50 \
-  --exclude-mode profile
-```
-
-该步骤实现 user-to-item semantic recommendation，即基于用户高 watch_ratio 历史视频构建用户兴趣向量，并召回相关视频。
-
-### Step 8: 基础指标评估
-
-```bash
-python scripts/08_eval_recall_metrics.py \
-  --topk 10 \
-  --pos-threshold 1.0 \
-  --test-size 1 \
-  --max-history 50
-```
-
-评估指标包括：
-
-- HitRate@K
-- Recall@K
-- NDCG@K
-
-并对比以下 baseline：
-
-- semantic：基于内容语义的用户兴趣推荐；
-- popularity：热门视频推荐；
-- random：随机推荐。
-
-## 7. 核心方法
-
-### 7.1 相似视频召回：item-to-item
-
-输入一个 `video_id`，系统读取该视频的文本语义向量，并在 FAISS 视频语义索引中召回 TopK 相似视频。
-
-### 7.2 文本 Query 检索：query-to-item
-
-输入一句文本 Query，系统使用同一个文本 embedding 模型将 Query 编码为向量，并在视频语义向量库中检索相关视频。
-
-### 7.3 用户兴趣推荐：user-to-item
-
-系统从 `small_matrix.csv` 中读取用户高 `watch_ratio` 的历史视频，使用这些视频的语义向量按 `watch_ratio` 加权平均得到用户兴趣向量，再通过 FAISS 召回 TopK 推荐视频。
-
-## 8. 当前版本定位
-
-V1 是一个短视频内容语义召回最小闭环，主要完成推荐系统中的召回阶段。
-
-当前 V1 不是完整推荐系统，尚未包含：
-
-- 多路召回；
-- CTR / watch_ratio 排序模型；
-- 粗排、精排、重排；
-- 实时在线服务；
-- 视频帧级多模态内容理解。
-
-## 9. 当前不足
-
-当前 V1 主要存在以下不足：
-
-- 只使用文本字段，没有使用视频帧、封面图等视觉内容；
-- 使用通用文本 embedding 模型，没有基于 KuaiRec 行为数据微调；
-- 只完成召回阶段，没有排序模型和重排策略；
-- Query 检索没有结合 BM25、关键词匹配和 Query 改写；
-- 用户兴趣推荐只使用简单的历史视频向量加权平均；
-- FAISS 当前使用精确检索，尚未扩展到大规模 ANN 检索；
-- 尚未完成 API 服务化和可视化 Demo。
-
-## 10. 后续计划
-
-- V2：引入视频帧 / 封面图特征，增强内容理解；
-- V3：构建图文多模态语义召回；
-- V4：加入用户行为建模和排序模型；
-- V5：完成 API / Demo / 工程化部署。
-
-## 11. License
-
-This project is for research and learning purposes.
+- 如何从短视频文本字段中构建内容语义 embedding；
+- 如何利用用户观看行为监督优化 item / user 表征；
+- 如何将文本语义、视频视觉特征和用户行为信号统一到语义召回框架中；
