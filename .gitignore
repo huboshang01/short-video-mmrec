@@ -11,17 +11,18 @@ venv/
 env/
 *.env
 
-# Raw and processed data
+# Raw and generated data
 data/raw/
-data/processed/*.csv
+data/processed/
+!data/README.md
 
-# Outputs and generated artifacts
+# Outputs
 outputs/
 checkpoints/
 logs/
 wandb/
 
-# Large files
+# Large artifacts
 *.pt
 *.pth
 *.ckpt
