@@ -7,8 +7,8 @@ import numpy as np
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-EMB_DIR = PROJECT_ROOT / "outputs" / "embeddings"
-INDEX_DIR = PROJECT_ROOT / "outputs" / "indexes"
+EMB_DIR = PROJECT_ROOT / "outputs" / "v1" / "embeddings"
+INDEX_DIR = PROJECT_ROOT / "outputs" / "v1" / "indexes"
 INDEX_DIR.mkdir(parents=True, exist_ok=True)
 
 

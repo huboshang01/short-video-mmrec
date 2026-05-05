@@ -14,7 +14,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.losses.retrieval_loss import bce_retrieval_loss
+from src.v2.losses.retrieval_loss import bce_retrieval_loss
 
 
 TRACKED_METRICS = ("loss", "accuracy", "positive_ratio", "pos_score", "neg_score", "score_margin")

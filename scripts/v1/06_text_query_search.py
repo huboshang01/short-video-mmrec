@@ -11,9 +11,9 @@ from sentence_transformers import SentenceTransformer
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-EMB_DIR = PROJECT_ROOT / "outputs" / "embeddings"
-INDEX_DIR = PROJECT_ROOT / "outputs" / "indexes"
-REPORT_DIR = PROJECT_ROOT / "outputs" / "reports"
+EMB_DIR = PROJECT_ROOT / "outputs" / "v1" / "embeddings"
+INDEX_DIR = PROJECT_ROOT / "outputs" / "v1" / "indexes"
+REPORT_DIR = PROJECT_ROOT / "outputs" / "v1" / "reports"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument("--topk", type=int, default=10, help="Number of retrieved videos.")
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"], help="Device for query encoding.")
     parser.add_argument("--use-query-instruction", action="store_true", help="Add BGE-style query instruction before encoding query.")
-    parser.add_argument("--save", action="store_true", help="Save retrieval result to outputs/reports.")
+    parser.add_argument("--save", action="store_true", help="Save retrieval result to outputs/v1/reports.")
     parser.add_argument("--index-path", type=str, default=str(INDEX_DIR / "video_text_faiss.index"), help="Path to FAISS index.")
     parser.add_argument("--meta", type=str, default=str(EMB_DIR / "video_text_meta.csv"), help="Path to video text metadata.")
     parser.add_argument("--embedding-config", type=str, default=str(EMB_DIR / "embedding_config.json"), help="Path to embedding config.")

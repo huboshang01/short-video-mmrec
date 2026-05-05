@@ -8,9 +8,9 @@ import pandas as pd
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-EMB_DIR = PROJECT_ROOT / "outputs" / "embeddings"
-INDEX_DIR = PROJECT_ROOT / "outputs" / "indexes"
-REPORT_DIR = PROJECT_ROOT / "outputs" / "reports"
+EMB_DIR = PROJECT_ROOT / "outputs" / "v1" / "embeddings"
+INDEX_DIR = PROJECT_ROOT / "outputs" / "v1" / "indexes"
+REPORT_DIR = PROJECT_ROOT / "outputs" / "v1" / "reports"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -25,7 +25,7 @@ def parse_args():
     parser.add_argument("--video-ids", type=str, default=str(EMB_DIR / "video_ids.npy"), help="Path to video ids.")
     parser.add_argument("--meta", type=str, default=str(EMB_DIR / "video_text_meta.csv"), help="Path to video text metadata.")
     parser.add_argument("--config", type=str, default=str(INDEX_DIR / "faiss_index_config.json"), help="Path to FAISS index config.")
-    parser.add_argument("--save", action="store_true", help="Save retrieval result to outputs/reports.")
+    parser.add_argument("--save", action="store_true", help="Save retrieval result to outputs/v1/reports.")
 
     args = parser.parse_args()
     if args.topk <= 0:

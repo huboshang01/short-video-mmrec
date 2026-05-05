@@ -25,10 +25,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.data.time_aware_retrieval_dataset import TimeAwarePointwiseRetrievalDataset, build_category_vocab
-from src.models.retrieval_item_tower import TextIdCategoryItemTower
-from src.models.retrieval_user_tower import RecentHistoryUserTower
-from src.train.train_retrieval import evaluate_pointwise_bce, save_retrieval_checkpoint, train_one_epoch_bce
+from src.v2.data.time_aware_retrieval_dataset import TimeAwarePointwiseRetrievalDataset, build_category_vocab
+from src.v2.models.retrieval_item_tower import TextIdCategoryItemTower
+from src.v2.models.retrieval_user_tower import RecentHistoryUserTower
+from src.v2.train.train_retrieval import evaluate_pointwise_bce, save_retrieval_checkpoint, train_one_epoch_bce
 
 
 LINE_WIDTH = 80

@@ -12,9 +12,9 @@ from tqdm import tqdm
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
-EMB_DIR = PROJECT_ROOT / "outputs" / "embeddings"
-INDEX_DIR = PROJECT_ROOT / "outputs" / "indexes"
-REPORT_DIR = PROJECT_ROOT / "outputs" / "reports"
+EMB_DIR = PROJECT_ROOT / "outputs" / "v1" / "embeddings"
+INDEX_DIR = PROJECT_ROOT / "outputs" / "v1" / "indexes"
+REPORT_DIR = PROJECT_ROOT / "outputs" / "v1" / "reports"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 

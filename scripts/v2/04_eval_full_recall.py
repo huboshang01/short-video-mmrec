@@ -27,9 +27,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.eval.retrieval_metrics import aggregate_ranking_metrics
-from src.models.retrieval_item_tower import TextIdCategoryItemTower
-from src.models.retrieval_user_tower import RecentHistoryUserTower
+from src.v2.eval.retrieval_metrics import aggregate_ranking_metrics
+from src.v2.models.retrieval_item_tower import TextIdCategoryItemTower
+from src.v2.models.retrieval_user_tower import RecentHistoryUserTower
 
 
 UNKNOWN_CATEGORY = "__UNK__"

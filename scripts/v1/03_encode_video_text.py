@@ -9,8 +9,8 @@ from sentence_transformers import SentenceTransformer
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
-EMB_DIR = PROJECT_ROOT / "outputs" / "embeddings"
+PROCESSED_DIR = PROJECT_ROOT / "data" / "processed" / "v1" / "kuairec"
+EMB_DIR = PROJECT_ROOT / "outputs" / "v1" / "embeddings"
 EMB_DIR.mkdir(parents=True, exist_ok=True)
 
 
