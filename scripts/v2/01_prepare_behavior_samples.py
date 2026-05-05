@@ -1,3 +1,16 @@
+"""
+V2.1 时序感知召回样本准备脚本。
+
+本脚本把 KuaiRec 的曝光交互表整理成推荐召回训练需要的标准行为样本：
+    1. 保留 timestamp / sort_key，后续 Dataset 才能按“target 之前的历史”构造样本。
+    2. 基于 watch_ratio 生成 pointwise label，显式区分正反馈、负反馈和中性样本。
+    3. 保留 item_text / category_id，供 item tower 的文本语义和类目特征使用。
+
+注意：
+    small_matrix 是高密度曝光矩阵，watch_ratio 较低的行为更接近“已曝光但不感兴趣”，
+    因此可以作为 BCE 训练中的显式负样本；这和未曝光 item 不能直接当负样本不同。
+"""
+
 from pathlib import Path
 import argparse
 import ast
@@ -22,12 +35,18 @@ def parse_args():
     parser.add_argument("--video-text", type=str, default=str(DEFAULT_VIDEO_TEXT), help="Path to V1 video_text.csv.")
     parser.add_argument("--item-categories", type=str, default=str(DEFAULT_ITEM_CATEGORIES), help="Path to item_categories.csv.")
     parser.add_argument("--out-dir", type=str, default=str(DEFAULT_OUT_DIR), help="Output directory for V2 behavior samples.")
-    parser.add_argument("--watch-threshold", type=float, default=1.0, help="watch_ratio threshold used to mark positive feedback.")
+    parser.add_argument("--watch-threshold", type=float, default=1.0, help="watch_ratio >= this value is treated as positive feedback.")
+    parser.add_argument("--neg-threshold", type=float, default=0.7, help="watch_ratio < this value is treated as explicit negative feedback.")
     parser.add_argument("--min-user-interactions", type=int, default=5, help="Drop users with fewer behavior samples than this value.")
     parser.add_argument("--val-ratio", type=float, default=0.1, help="Per-user validation split ratio.")
     parser.add_argument("--test-ratio", type=float, default=0.1, help="Per-user test split ratio.")
+    parser.add_argument("--source-name", type=str, default="small", help="Data source tag saved into output samples, e.g. small or big.")
 
     args = parser.parse_args()
+    if args.neg_threshold < 0:
+        raise ValueError("--neg-threshold must be non-negative.")
+    if args.neg_threshold >= args.watch_threshold:
+        raise ValueError("--neg-threshold must be smaller than --watch-threshold.")
     if args.min_user_interactions < 2:
         raise ValueError("--min-user-interactions must be at least 2.")
     if not 0 <= args.val_ratio < 1:
@@ -107,9 +126,12 @@ def load_interactions(path: Path) -> pd.DataFrame:
         sort_key = pd.to_numeric(interactions[time_cols[0]], errors="coerce")
         for time_col in time_cols[1:]:
             sort_key = sort_key.fillna(pd.to_numeric(interactions[time_col], errors="coerce"))
-        interactions["_sort_key"] = sort_key.fillna(pd.Series(np.arange(len(interactions), dtype=np.int64), index=interactions.index))
+        # timestamp / sort_key 都用数值型秒级时间；缺失时用原始行号兜底，保证每条行为可排序。
+        interactions["timestamp"] = sort_key.fillna(pd.Series(np.arange(len(interactions), dtype=np.int64), index=interactions.index))
+        interactions["sort_key"] = interactions["timestamp"]
     else:
-        interactions["_sort_key"] = np.arange(len(interactions), dtype=np.int64)
+        interactions["timestamp"] = np.arange(len(interactions), dtype=np.int64)
+        interactions["sort_key"] = interactions["timestamp"]
 
     interactions["user_id"] = pd.to_numeric(interactions["user_id"], errors="coerce")
     interactions["item_id"] = pd.to_numeric(interactions["item_id"], errors="coerce")
@@ -117,7 +139,7 @@ def load_interactions(path: Path) -> pd.DataFrame:
     interactions["user_id"] = interactions["user_id"].astype("int64")
     interactions["item_id"] = interactions["item_id"].astype("int64")
 
-    return interactions[["user_id", "item_id", "watch_ratio", "_sort_key"]]
+    return interactions[["user_id", "item_id", "watch_ratio", "timestamp", "sort_key"]]
 
 
 # 文本表构造：优先使用 V1 生成的 video_text；缺失时拼接其它文本列兜底
@@ -186,7 +208,7 @@ def split_by_user(df: pd.DataFrame, val_ratio: float, test_ratio: float, min_use
     df["split"] = "train"
 
     for _, group in df.groupby("user_id", sort=False):
-        group = group.sort_values("_sort_key")
+        group = group.sort_values("sort_key")
         n = len(group)
 
         n_val = max(1, int(round(n * val_ratio))) if val_ratio > 0 else 0
@@ -231,14 +253,19 @@ def save_outputs(samples: pd.DataFrame, out_dir: Path, args) -> None:
         "num_users": int(samples["user_id"].nunique()),
         "num_items": int(samples["item_id"].nunique()),
         "num_positive": int(samples["is_positive"].sum()),
+        "num_negative": int((samples["label"] == 0).sum()),
+        "num_ignored_neutral": int((samples["label"] < 0).sum()),
         "positive_ratio": float(samples["is_positive"].mean()),
         "watch_ratio_mean": float(samples["watch_ratio"].mean()),
         "watch_ratio_median": float(samples["watch_ratio"].median()),
         "split_counts": {str(k): int(v) for k, v in samples["split"].value_counts().to_dict().items()},
+        "label_counts": {str(k): int(v) for k, v in samples["label"].value_counts().to_dict().items()},
         "watch_threshold": float(args.watch_threshold),
+        "neg_threshold": float(args.neg_threshold),
         "min_user_interactions": int(args.min_user_interactions),
         "val_ratio": float(args.val_ratio),
         "test_ratio": float(args.test_ratio),
+        "source_name": str(args.source_name),
     }
 
     with open(summary_path, "w", encoding="utf-8") as f:
@@ -303,13 +330,50 @@ def main():
 
     print("\n[Label] positive feedback")
     samples["category_id"] = samples["category_id"].fillna("unknown").astype(str)
+
+    # label 是 V2.1 pointwise BCE 的主监督：
+    #   1  = 明确正反馈，target 应该被拉近 user embedding；
+    #   0  = 明确负反馈，target 应该被推远；
+    #   -1 = 中性区间，默认不作为训练 target，避免弱标签噪声。
     samples["is_positive"] = (samples["watch_ratio"] >= args.watch_threshold).astype("int8")
+    samples["label"] = np.select(
+        [
+            samples["watch_ratio"] >= args.watch_threshold,
+            samples["watch_ratio"] < args.neg_threshold,
+        ],
+        [1, 0],
+        default=-1,
+    ).astype("int8")
+
+    # sample_weight 让高完成度正反馈贡献更大，同时对极端 watch_ratio 做截断，避免长尾异常值支配梯度。
+    clipped_watch = samples["watch_ratio"].clip(lower=0.0, upper=5.0)
+    samples["sample_weight"] = np.where(
+        samples["label"] == 1,
+        np.log1p(clipped_watch),
+        1.0,
+    ).astype("float32")
+    samples["source"] = str(args.source_name)
 
     print("\n[Split] train / val / test by user time order")
     samples = split_by_user(samples, args.val_ratio, args.test_ratio, args.min_user_interactions)
 
-    samples = samples.sort_values(["user_id", "_sort_key", "item_id"]).reset_index(drop=True)
-    samples = samples[["user_id", "item_id", "item_text", "watch_ratio", "category_id", "is_positive", "split"]].copy()
+    samples = samples.sort_values(["user_id", "sort_key", "item_id"]).reset_index(drop=True)
+    samples = samples[
+        [
+            "user_id",
+            "item_id",
+            "item_text",
+            "watch_ratio",
+            "category_id",
+            "is_positive",
+            "label",
+            "sample_weight",
+            "timestamp",
+            "sort_key",
+            "split",
+            "source",
+        ]
+    ].copy()
 
     save_outputs(samples, out_dir, args)
 
