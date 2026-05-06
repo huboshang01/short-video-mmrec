@@ -51,15 +51,17 @@ short-video-mmrec/
 ├── .gitignore
 ├── configs/
 ├── scripts/
-│   ├── 00_check_env.py
-│   ├── 01_check_data.py
-│   ├── 02_build_video_text.py
-│   ├── 03_encode_video_text.py
-│   ├── 04_build_faiss_index.py
-│   ├── 05_similar_video.py
-│   ├── 06_text_query_search.py
-│   ├── 07_user_interest_recommend.py
-│   └── 08_eval_recall_metrics.py
+│   ├── v1/
+│   │   ├── 00_check_env.py
+│   │   ├── 01_check_data.py
+│   │   ├── 02_build_video_text.py
+│   │   ├── 03_encode_video_text.py
+│   │   ├── 04_build_faiss_index.py
+│   │   ├── 05_similar_video.py
+│   │   ├── 06_text_query_search.py
+│   │   ├── 07_user_interest_recommend.py
+│   │   └── 08_eval_recall_metrics.py
+│   └── v2/
 ├── data/
 │   ├── raw/
 │   └── processed/
@@ -80,7 +82,7 @@ pip install -r requirements-v1.txt
 检查环境：
 
 ```bash
-python scripts/00_check_env.py
+python scripts/v1/00_check_env.py
 ```
 
 ## 6. V1 运行流程
@@ -88,13 +90,13 @@ python scripts/00_check_env.py
 ### Step 1: 检查数据
 
 ```bash
-python scripts/01_check_data.py
+python scripts/v1/01_check_data.py
 ```
 
 ### Step 2: 构造视频文本字段
 
 ```bash
-python scripts/02_build_video_text.py
+python scripts/v1/02_build_video_text.py
 ```
 
 输出：
@@ -106,7 +108,7 @@ data/processed/video_text.csv
 ### Step 3: 文本向量编码
 
 ```bash
-python scripts/03_encode_video_text.py \
+python scripts/v1/03_encode_video_text.py \
   --model-name BAAI/bge-small-zh-v1.5 \
   --batch-size 64 \
   --device auto \
@@ -125,7 +127,7 @@ outputs/embeddings/embedding_config.json
 ### Step 4: 构建 FAISS 语义索引
 
 ```bash
-python scripts/04_build_faiss_index.py --metric cosine
+python scripts/v1/04_build_faiss_index.py --metric cosine
 ```
 
 输出：
@@ -138,7 +140,7 @@ outputs/indexes/faiss_index_config.json
 ### Step 5: 相似视频召回
 
 ```bash
-python scripts/05_similar_video.py --video-id 0 --topk 10
+python scripts/v1/05_similar_video.py --video-id 0 --topk 10
 ```
 
 该步骤实现 item-to-item semantic recall，即输入一个视频 ID，召回语义相似的视频。
@@ -146,7 +148,7 @@ python scripts/05_similar_video.py --video-id 0 --topk 10
 ### Step 6: 文本 Query 检索
 
 ```bash
-python scripts/06_text_query_search.py --query "篮球教学" --topk 10
+python scripts/v1/06_text_query_search.py --query "篮球教学" --topk 10
 ```
 
 该步骤实现 text-to-video semantic retrieval，即输入用户搜索词，召回语义相关的视频。
@@ -154,7 +156,7 @@ python scripts/06_text_query_search.py --query "篮球教学" --topk 10
 ### Step 7: 用户兴趣推荐
 
 ```bash
-python scripts/07_user_interest_recommend.py \
+python scripts/v1/07_user_interest_recommend.py \
   --user-id 0 \
   --topk 10 \
   --pos-threshold 1.0 \
@@ -167,7 +169,7 @@ python scripts/07_user_interest_recommend.py \
 ### Step 8: 基础指标评估
 
 ```bash
-python scripts/08_eval_recall_metrics.py \
+python scripts/v1/08_eval_recall_metrics.py \
   --topk 10 \
   --pos-threshold 1.0 \
   --test-size 1 \
