@@ -1,84 +1,163 @@
 # Short-Video MMRec: 面向短视频搜索推荐的多模态内容理解与语义召回系统
 
-本项目面向短视频搜索推荐业务，围绕 **内容语义表征、用户行为建模、多模态内容理解与语义召回** 等核心问题，构建一个从静态文本语义召回 baseline，逐步演进到行为监督召回模型与图文视频多模态 item 表征的工程化系统。
+本项目面向短视频搜索推荐场景，围绕 **内容语义表征、用户行为建模、多模态内容理解与语义召回** 构建分阶段演进的离线推荐系统。
 
-项目以 KuaiRec 等公开短视频推荐数据集为基础，首先完成短视频内容语义召回的最小闭环；随后引入用户观看行为监督，训练 Behavior-Aware Semantic Adapter，实现 item 内容语义与用户兴趣行为的对齐；进一步扩展视频帧视觉编码模块，将文本语义、视频帧视觉特征与用户行为信号融合，用于短视频搜索推荐场景下的语义召回与个性化推荐。
+项目从 KuaiRec 2.0 文本语义召回 baseline 出发，逐步引入用户观看行为监督、多特征双塔召回、多模态 item 表征和 full-catalog 召回评估，目标是验证短视频内容语义、用户兴趣行为和图文视频多模态特征在召回阶段的建模方式。
 
 ## Project Roadmap
 
-当前项目主干分为三个阶段：
+| Stage | Module | Dataset | Core |
+|---|---|---|---|
+| V1 | Text Semantic Recall Baseline | KuaiRec 2.0 | BGE 文本向量 + FAISS 语义索引 + I2I / Q2I / U2I 召回 |
+| V2 | Behavior-Aware Semantic Retrieval | KuaiRec 2.0 | 多特征 Item Tower + 时序感知 User Tower + pointwise BCE 双塔训练 |
+| V3 | Multimodal Item Representation | MicroLens-100K | BGE-M3 + CLIP-RN50 + VideoMAE 多模态 Item Encoder + sampled softmax |
 
-### V1: Text-based Semantic Recall Baseline
+详细文档：
 
-基于 KuaiRec small matrix 构建短视频内容语义召回最小闭环。
+- [SV-Recall V1: 基于 KuaiRec 的短视频内容语义召回与用户兴趣推荐最小闭环](docs/V1_minimal_semantic_recall.md)
+- [SV-Recall V2: 基于强文本表征与行为监督的短视频语义召回模型](docs/V2_behavior_aware_semantic_adapter.md)
+- [SV-Recall V3: 基于多模态内容理解的短视频 Item 表征与语义召回](docs/V3_multimodal_item_recall.md)
 
-核心内容包括：
+## V1: 文本语义召回最小闭环
 
-- 文本字段清洗与拼接
-- 短视频文本语义编码
-- FAISS 向量索引构建
-- 相似视频检索
-- 基于用户历史行为的兴趣向量推荐
-- semantic / popularity / random baseline 对比
-- Recall@K、HitRate@K 等基础指标评估
+V1 基于 KuaiRec 2.0 构造短视频文本语义字段，融合封面文字、caption、topic tag 和多级类目信息，使用 `BAAI/bge-small-zh-v1.5` 编码 3327 个短视频 item，并通过 FAISS 构建 cosine 语义索引。
 
-V1 的目标是完成从 item 内容字段编码、向量检索、相似视频召回到用户兴趣推荐的完整 baseline，为后续行为监督训练和多模态扩展提供工程基础。
+已完成能力：
 
----
+- item-to-item 相似视频召回；
+- query-to-item 自然语言文本检索；
+- user-to-item 基于高 `watch_ratio` 历史视频的用户兴趣召回；
+- semantic / popularity / random baseline 对比评估。
 
-### V2: Behavior-Aware Semantic Adapter
+V1 证明了文本语义召回链路可以跑通，但纯文本 semantic 用户推荐在 KuaiRec 行为评估中弱于 popularity baseline，因此引出 V2 的行为监督建模。
 
-在 V1 静态文本语义召回基础上，引入更强文本语义表征和用户行为监督，训练面向短视频推荐任务的语义召回模型。
+## V2: 行为监督语义召回模型
 
-核心内容包括：
+V2 在 V1 静态文本语义基础上，引入 KuaiRec 2.0 的用户观看行为、item ID 和类目特征，训练 behavior-aware 双塔召回模型。
 
-- BGE / sentence-transformers 文本语义表征
-- embedding cache 构建与复用
-- item encoder / semantic adapter
-- user encoder
-- watch_ratio 加权用户兴趣建模
-- InfoNCE + MSE + CE 多任务训练
-- 行为监督下的 user-item 语义对齐
-- Recall@K、NDCG@K、Avg WatchRatio@K、Category Hit@K 等召回评估
+核心设计：
 
-V2 的目标是将 V1 中冻结的静态文本 embedding，升级为经过用户行为监督适配的 behavior-aware semantic representation，使召回结果不仅具备内容语义相关性，也能够反映用户观看偏好。
+- 多特征融合 Item Tower：BGE 文本语义 + item ID 协同过滤记忆 + category 类目先验；
+- 时序感知 User Tower：最近行为 + `watch_ratio` 行为强度 + 时间衰减；
+- pointwise BCE：利用高 `watch_ratio` 正反馈和低 `watch_ratio` 显式负反馈进行 user-item 对齐；
+- full-catalog ranking：在全量候选 item 上评估召回效果。
 
----
+数据规模：
 
-### V3: Multimodal Video-Text Item Representation
+| split | samples |
+|---|---:|
+| train | 3,741,264 |
+| val | 467,653 |
+| test | 467,653 |
 
-在 V2 行为监督语义召回基础上，进一步引入视频帧视觉特征，构建图文视频融合的多模态 item 表征。
+当前最佳 V2 评估结果，基于 1411 名验证用户、3327 个候选短视频 item：
 
-核心内容包括：
+| K | Recall@K | HitRate@K | NDCG@K | MRR@K |
+|---:|---:|---:|---:|---:|
+| 10 | 1.75% | 76.68% | 16.53% | 31.14% |
+| 20 | 3.32% | 91.00% | 16.12% | 32.17% |
+| 50 | 7.87% | 98.65% | 15.80% | 32.43% |
+| 100 | 15.37% | 99.86% | 16.97% | 32.45% |
 
-- 视频抽帧 / 封面图处理
-- CLIP image encoder 提取视觉语义特征
-- 帧级特征聚合
-- 文本语义特征与视觉帧特征融合
-- multimodal item representation 构建
-- 多模态表征接入语义召回流程
+## V3: 多模态 Item 表征与语义召回
 
-V3 的目标是将 item 表征从纯文本语义扩展为图文视频多模态语义表示，进一步增强短视频内容理解能力，使系统能够同时利用文本字段和视觉内容进行语义召回。
+V3 基于 MicroLens-100K，引入官方预提取的 text / image / video 多模态特征，构建短视频多模态 item encoder，并接入双塔召回训练与 full-catalog 评估。
 
-> 说明：由于 KuaiRec 等公开推荐数据集通常不直接提供原始视频流或完整视频帧，V3 中的视频帧理解模块将以外部公开视频数据集、样例视频或可插拔多模态模块的方式进行验证，并作为后续真实短视频业务场景中的 item encoder 扩展组件。
+多模态特征：
 
----
+| modality | backbone | dim | shape |
+|---|---|---:|---|
+| text | BGE-M3 | 1024 | 19738 x 1024 |
+| image | CLIP-RN50 | 1024 | 19738 x 1024 |
+| video | VideoMAE | 768 | 19738 x 768 |
 
-## Future Extensions
+数据规模：
 
-在完成 V1-V3 主干后，项目可继续扩展以下方向：
+| split | samples |
+|---|---:|
+| train | 507,529 |
+| val | 105,938 |
+| test | 105,938 |
 
-- 引入 Qwen2.5-VL / InternVL 等多模态大模型，对视频封面或关键帧生成视觉描述，并将生成描述接入语义召回系统；
-- 构建 query-to-video 的自然语言检索模块，支持用户通过自然语言表达兴趣需求；
-- 在 FAISS 召回结果上加入轻量级 reranker，结合 user embedding、item embedding、watch_ratio、category、popularity 等特征进行重排序；
-- 构建面向短视频推荐的 conversational recommender demo，实现自然语言意图理解、语义召回和推荐理由生成。
+当前 V3 模型参数量约 320 万，在 100,000 名测试用户、19,738 个候选 item 上完成 full-catalog 评估：
+
+| K | Recall@K | HitRate@K | NDCG@K | MRR@K |
+|---:|---:|---:|---:|---:|
+| 10 | 2.86% | 3.03% | 1.35% | 0.92% |
+| 20 | 5.22% | 5.47% | 1.95% | 1.09% |
+| 50 | 9.57% | 9.96% | 2.82% | 1.23% |
+| 100 | 14.57% | 15.09% | 3.64% | 1.30% |
+
+V3 当前定位是多模态内容特征接入召回链路的 MVP 验证版本。由于 MicroLens-100K 候选池更大、每个用户 test 正反馈较少，且缺少显式负反馈，当前指标主要用于验证多模态 item 表征和召回训练闭环。
+
+## Project Structure
+
+```text
+short-video-mmrec/
+├── configs/
+│   ├── v2/
+│   └── v3/
+├── data/
+│   ├── raw/
+│   └── processed/
+│       ├── v1/
+│       ├── v2/
+│       └── v3/
+├── docs/
+│   ├── V1_minimal_semantic_recall.md
+│   ├── V2_behavior_aware_semantic_adapter.md
+│   └── V3_multimodal_item_recall.md
+├── outputs/
+│   ├── v1/
+│   ├── v2/
+│   └── v3/
+├── scripts/
+│   ├── v1/
+│   ├── v2/
+│   └── v3/
+└── src/
+    ├── v2/
+    └── v3/
+```
+
+## Environment
+
+V1 / V2 / V3 共用 Python + PyTorch 生态，主要依赖：
+
+- PyTorch
+- pandas / numpy
+- sentence-transformers
+- FAISS
+- scikit-learn
+- tqdm
+- pyyaml
+
+V1 依赖可参考：
+
+```bash
+pip install -r requirements-v1.txt
+```
+
+V2 依赖可参考：
+
+```bash
+pip install -r requirements-v2.txt
+```
 
 ## Project Positioning
 
 本项目重点不在于复现完整工业推荐系统中的召回、粗排、精排、重排和在线 A/B 流程，而是聚焦于短视频推荐场景中的 **多模态内容理解与语义召回**。
 
-项目核心关注：
+当前已完成：
 
-- 如何从短视频文本字段中构建内容语义 embedding；
-- 如何利用用户观看行为监督优化 item / user 表征；
-- 如何将文本语义、视频视觉特征和用户行为信号统一到语义召回框架中；
+- 文本语义召回 baseline；
+- 行为监督双塔召回模型；
+- 多模态 item 表征与召回训练；
+- full-catalog 离线召回评估。
+
+后续可继续扩展：
+
+- LightGCN 协同过滤召回通道；
+- GRU / Transformer 用户序列兴趣建模；
+- 多路召回融合与轻量 reranker；
+- API 服务化与可视化 Demo。

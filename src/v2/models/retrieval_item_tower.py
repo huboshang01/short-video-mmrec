@@ -75,6 +75,7 @@ class TextIdCategoryItemTower(nn.Module):
         )
 
         if self.use_item_id:
+            # nn.Embedding 是PyTorch 中的一个神经网络层，它主要用于将离散的、高维的数据(如词素引)转换为连续的、低维的空间中的稠密向量表示，即将离散特征稠密化。
             self.item_embedding = nn.Embedding(num_items, item_id_dim)
             self.item_feature_dropout = nn.Dropout(id_feature_dropout)
         else:
