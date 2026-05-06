@@ -9,9 +9,9 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
-EMB_DIR = PROJECT_ROOT / "outputs" / "embeddings"
-INDEX_DIR = PROJECT_ROOT / "outputs" / "indexes"
-REPORT_DIR = PROJECT_ROOT / "outputs" / "reports"
+EMB_DIR = PROJECT_ROOT / "outputs" / "v1" / "embeddings"
+INDEX_DIR = PROJECT_ROOT / "outputs" / "v1" / "indexes"
+REPORT_DIR = PROJECT_ROOT / "outputs" / "v1" / "reports"
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -26,7 +26,7 @@ def parse_args():
     parser.add_argument("--weight-cap", type=float, default=5.0, help="Cap watch_ratio weights to avoid extreme values dominating the user vector.")
     parser.add_argument("--exclude-mode", type=str, default="profile", choices=["profile", "all_seen", "none"], help="profile: exclude profile videos; all_seen: exclude all watched videos; none: do not exclude any video.")
     parser.add_argument("--candidate-k", type=int, default=500, help="Number of candidates retrieved from FAISS before filtering.")
-    parser.add_argument("--save", action="store_true", help="Save recommendation result to outputs/reports.")
+    parser.add_argument("--save", action="store_true", help="Save recommendation result to outputs/v1/reports.")
     parser.add_argument("--small-matrix", type=str, default="", help="Path to small_matrix.csv. If empty, search under data/raw.")
     parser.add_argument("--index-path", type=str, default=str(INDEX_DIR / "video_text_faiss.index"), help="Path to FAISS index.")
     parser.add_argument("--embeddings", type=str, default=str(EMB_DIR / "video_text_embeddings.npy"), help="Path to video text embeddings.")

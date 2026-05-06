@@ -1,8 +1,8 @@
 """
-V2.1 pointwise retrieval 训练工具。
+V3 sampled-softmax 双塔召回训练工具。
 
-本模块只放训练/验证循环和 checkpoint 保存，不处理命令行参数和 Dataset 构造。
-这样脚本层可以自由组合 small/big 数据源，而训练主逻辑保持稳定。
+本模块只包含训练/验证循环和 checkpoint 保存，不处理命令行参数。脚本层负责构造
+Dataset、FeatureCache 和模型；这里负责把 item index batch 转成多模态特征并执行前向。
 """
 
 from __future__ import annotations
@@ -14,33 +14,43 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from src.losses.retrieval_loss import bce_retrieval_loss
+from src.v3.data.microlens_retrieval_dataset import MultimodalFeatureCache
+from src.v3.losses.sampled_softmax_loss import sampled_softmax_loss
 
 
-TRACKED_METRICS = ("loss", "accuracy", "positive_ratio", "pos_score", "neg_score", "score_margin")
+TRACKED_METRICS = ("loss", "accuracy", "pos_score", "neg_score", "score_margin")
 
 
 def move_batch_to_device(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
-    """把 batch 中所有 Tensor 移到训练设备，非 Tensor 字段保持不变。"""
+    """只移动小型 index/mask Tensor；大特征由 FeatureCache 按需 gather。"""
     return {key: value.to(device) if torch.is_tensor(value) else value for key, value in batch.items()}
 
 
-def encode_retrieval_batch(item_tower, user_tower, batch: dict[str, torch.Tensor]) -> tuple[torch.Tensor, torch.Tensor]:
-    """统一双塔前向路径：history 走 user tower，target 走 item tower。"""
+def encode_retrieval_batch(
+    item_tower,
+    user_tower,
+    feature_cache: MultimodalFeatureCache,
+    batch: dict[str, torch.Tensor],
+    device: torch.device,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """统一 V3 双塔前向路径。"""
+    history_indices = batch["history_item_indices"]
+    target_indices = batch["target_item_index"]
+    negative_indices = batch["negative_item_indices"]
+
+    history_features = feature_cache.gather(history_indices, device=device)
+    history_item_embs = item_tower.encode_item(**history_features, item_indices=history_indices)
     user_embs = user_tower.encode_user(
-        history_item_text_embs=batch["history_item_text_embs"],
-        history_item_indices=batch["history_item_indices"],
-        history_category_indices=batch["history_category_indices"],
-        history_watch_ratios=batch["history_watch_ratios"],
-        history_time_deltas=batch["history_time_deltas"],
+        history_item_embs=history_item_embs,
         history_mask=batch["history_mask"],
     )
-    target_item_embs = item_tower.encode_item(
-        item_text_emb=batch["target_item_text_emb"],
-        item_indices=batch["target_item_index"],
-        category_indices=batch["target_category_index"],
-    )
-    return user_embs, target_item_embs
+
+    target_features = feature_cache.gather(target_indices, device=device)
+    positive_item_embs = item_tower.encode_item(**target_features, item_indices=target_indices)
+
+    negative_features = feature_cache.gather(negative_indices, device=device)
+    negative_item_embs = item_tower.encode_item(**negative_features, item_indices=negative_indices)
+    return user_embs, positive_item_embs, negative_item_embs
 
 
 def _new_metric_sums() -> dict[str, float]:
@@ -48,7 +58,7 @@ def _new_metric_sums() -> dict[str, float]:
 
 
 def _accumulate_metrics(metric_sums: dict[str, float], metrics: dict[str, float], batch_size: int) -> None:
-    """按样本数加权累加，避免最后一个小 batch 对 epoch 均值影响过大。"""
+    """按样本数加权累加，避免最后一个小 batch 扭曲 epoch 均值。"""
     for metric_name in TRACKED_METRICS:
         metric_sums[metric_name] += float(metrics[metric_name]) * batch_size
 
@@ -67,13 +77,14 @@ def _set_progress_metrics(pbar: tqdm, metric_sums: dict[str, float], sample_coun
     )
 
 
-def train_one_epoch_bce(
+def train_one_epoch_sampled_softmax(
     item_tower,
     user_tower,
+    feature_cache: MultimodalFeatureCache,
     dataloader: DataLoader,
     optimizer: torch.optim.Optimizer,
     device: torch.device,
-    temperature: float = 1.0,
+    temperature: float = 0.07,
     log_every: int = 100,
 ) -> dict[str, float]:
     if log_every <= 0:
@@ -88,15 +99,20 @@ def train_one_epoch_bce(
 
     for step, batch in enumerate(pbar, start=1):
         batch = move_batch_to_device(batch, device)
-        batch_size = int(batch["label"].numel())
+        batch_size = int(batch["target_item_index"].numel())
 
         optimizer.zero_grad(set_to_none=True)
-        user_embs, target_item_embs = encode_retrieval_batch(item_tower, user_tower, batch)
-        loss, metrics = bce_retrieval_loss(
+        user_embs, positive_item_embs, negative_item_embs = encode_retrieval_batch(
+            item_tower=item_tower,
+            user_tower=user_tower,
+            feature_cache=feature_cache,
+            batch=batch,
+            device=device,
+        )
+        loss, metrics = sampled_softmax_loss(
             user_embs=user_embs,
-            item_embs=target_item_embs,
-            labels=batch["label"],
-            sample_weights=batch["sample_weight"],
+            positive_item_embs=positive_item_embs,
+            negative_item_embs=negative_item_embs,
             temperature=temperature,
         )
         loss.backward()
@@ -104,7 +120,6 @@ def train_one_epoch_bce(
 
         sample_count += batch_size
         _accumulate_metrics(metric_sums, metrics, batch_size=batch_size)
-
         if step % log_every == 0 or step == 1:
             _set_progress_metrics(pbar, metric_sums, sample_count)
 
@@ -112,12 +127,13 @@ def train_one_epoch_bce(
 
 
 @torch.no_grad()
-def evaluate_pointwise_bce(
+def evaluate_sampled_softmax(
     item_tower,
     user_tower,
+    feature_cache: MultimodalFeatureCache,
     dataloader: DataLoader,
     device: torch.device,
-    temperature: float = 1.0,
+    temperature: float = 0.07,
 ) -> dict[str, float]:
     item_tower.eval()
     user_tower.eval()
@@ -128,14 +144,18 @@ def evaluate_pointwise_bce(
 
     for batch in pbar:
         batch = move_batch_to_device(batch, device)
-        batch_size = int(batch["label"].numel())
-
-        user_embs, target_item_embs = encode_retrieval_batch(item_tower, user_tower, batch)
-        _, metrics = bce_retrieval_loss(
+        batch_size = int(batch["target_item_index"].numel())
+        user_embs, positive_item_embs, negative_item_embs = encode_retrieval_batch(
+            item_tower=item_tower,
+            user_tower=user_tower,
+            feature_cache=feature_cache,
+            batch=batch,
+            device=device,
+        )
+        _, metrics = sampled_softmax_loss(
             user_embs=user_embs,
-            item_embs=target_item_embs,
-            labels=batch["label"],
-            sample_weights=batch["sample_weight"],
+            positive_item_embs=positive_item_embs,
+            negative_item_embs=negative_item_embs,
             temperature=temperature,
         )
 
@@ -155,16 +175,17 @@ def save_retrieval_checkpoint(
     metrics: dict[str, Any],
     config: dict[str, Any],
 ) -> None:
-    """保存召回模型 checkpoint；config 中包含 category vocab 和特征维度，便于评估脚本恢复。"""
+    """保存 V3 召回模型 checkpoint。"""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-
-    checkpoint = {
-        "epoch": int(epoch),
-        "item_tower": item_tower.state_dict(),
-        "user_tower": user_tower.state_dict(),
-        "optimizer": optimizer.state_dict(),
-        "metrics": metrics,
-        "config": config,
-    }
-    torch.save(checkpoint, path)
+    torch.save(
+        {
+            "epoch": int(epoch),
+            "item_tower": item_tower.state_dict(),
+            "user_tower": user_tower.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "metrics": metrics,
+            "config": config,
+        },
+        path,
+    )

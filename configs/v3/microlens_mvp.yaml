@@ -1,0 +1,42 @@
+data:
+  processed_dir: data/processed/v3/microlens_100k
+  feature_config: data/processed/v3/microlens_100k/feature_config.json
+  item_ids: data/processed/v3/microlens_100k/item_ids.csv
+  train_samples: data/processed/v3/microlens_100k/behavior_samples_train.csv
+  val_samples: data/processed/v3/microlens_100k/behavior_samples_val.csv
+  test_samples: data/processed/v3/microlens_100k/behavior_samples_test.csv
+
+model:
+  text_proj_dim: 256
+  image_proj_dim: 256
+  video_proj_dim: 256
+  item_id_dim: 64
+  hidden_dim: 512
+  output_dim: 512
+  dropout: 0.1
+  id_feature_dropout: 0.1
+  use_item_id: true
+
+train:
+  max_history_len: 50
+  num_negatives: 32
+  batch_size: 128
+  epochs: 3
+  lr: 0.0001
+  weight_decay: 0.0001
+  temperature: 0.07
+  max_train_samples: 200000
+  max_val_samples: 50000
+  num_workers: 0
+  seed: 42
+  log_every: 100
+  device: auto
+
+eval:
+  ks: [10, 20, 50, 100]
+  batch_size: 512
+  user_batch_size: 256
+  max_eval_users: -1
+
+output:
+  dir: outputs/v3/microlens_100k/retrieval_mvp

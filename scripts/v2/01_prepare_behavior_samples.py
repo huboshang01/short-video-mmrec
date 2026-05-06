@@ -22,7 +22,7 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SMALL_MATRIX = PROJECT_ROOT / "data" / "raw" / "KuaiRec 2.0" / "data" / "small_matrix.csv"
-DEFAULT_VIDEO_TEXT = PROJECT_ROOT / "data" / "processed" / "video_text.csv"
+DEFAULT_VIDEO_TEXT = PROJECT_ROOT / "data" / "processed" / "v1" / "kuairec" / "video_text.csv"
 DEFAULT_ITEM_CATEGORIES = PROJECT_ROOT / "data" / "raw" / "KuaiRec 2.0" / "data" / "item_categories.csv"
 DEFAULT_OUT_DIR = PROJECT_ROOT / "data" / "processed" / "v2"
 

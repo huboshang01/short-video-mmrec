@@ -17,7 +17,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from src.models.retrieval_item_tower import TextIdCategoryItemTower
+from src.v2.models.retrieval_item_tower import TextIdCategoryItemTower
 
 
 class WatchTimeWeightedPooling(nn.Module):

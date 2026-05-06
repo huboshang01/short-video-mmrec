@@ -5,7 +5,7 @@ import re
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
-PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+PROCESSED_DIR = PROJECT_ROOT / "data" / "processed" / "v1" / "kuairec"
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 
