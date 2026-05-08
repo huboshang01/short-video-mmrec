@@ -59,11 +59,11 @@ def bce_retrieval_loss(
 
     with torch.no_grad():
         probs = torch.sigmoid(scores)
-        preds = (probs >= 0.5).to(dtype=labels.dtype)
+        preds = (probs >= 0.5).to(dtype=labels.dtype) # 把布尔值转成和 labels 一样的数据类型
         accuracy = (preds == labels).float().mean()
 
         pos_mask = labels >= 0.5
-        neg_mask = ~pos_mask
+        neg_mask = ~pos_mask # 布尔取反
         pos_score = scores[pos_mask].mean() if pos_mask.any() else scores.new_tensor(0.0)
         neg_score = scores[neg_mask].mean() if neg_mask.any() else scores.new_tensor(0.0)
 

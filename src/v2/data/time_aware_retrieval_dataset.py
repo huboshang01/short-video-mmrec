@@ -91,6 +91,8 @@ class TimeAwarePointwiseRetrievalDataset(Dataset):
 
         if max_history_len <= 0:
             raise ValueError("max_history_len must be positive.")
+        if pos_threshold <= 0:
+            raise ValueError("pos_threshold must be positive.")
         if neg_threshold >= pos_threshold:
             raise ValueError("neg_threshold must be smaller than pos_threshold.")
         if history_min_watch_ratio < 0:
@@ -197,18 +199,12 @@ class TimeAwarePointwiseRetrievalDataset(Dataset):
             )
         behavior_samples["label"] = pd.to_numeric(behavior_samples["label"], errors="coerce").fillna(-1).astype("int8")
 
-        if "sample_weight" not in behavior_samples.columns:
-            clipped_watch = behavior_samples["watch_ratio"].clip(lower=0.0, upper=5.0)
-            behavior_samples["sample_weight"] = np.where(
-                behavior_samples["label"] == 1,
-                np.log1p(clipped_watch),
-                1.0,
-            )
-        behavior_samples["sample_weight"] = (
-            pd.to_numeric(behavior_samples["sample_weight"], errors="coerce")
-            .fillna(1.0)
-            .astype("float32")
-        )
+        clipped_watch = behavior_samples["watch_ratio"].clip(lower=0.0, upper=5.0)
+        behavior_samples["sample_weight"] = np.where(
+            behavior_samples["label"] == 1,
+            np.log1p(clipped_watch),
+            1.0,
+        ).astype("float32")
 
         return behavior_samples
 
@@ -241,6 +237,7 @@ class TimeAwarePointwiseRetrievalDataset(Dataset):
         behavior_samples: pd.DataFrame,
     ) -> tuple[dict[int, UserHistory], pd.DataFrame]:
         """
+        ※※※
         为每个用户建立时间序列，同时收集有历史的 pointwise target。
 
         target 的 history 只允许使用 target_position 之前、且 watch_ratio 达到
@@ -277,6 +274,7 @@ class TimeAwarePointwiseRetrievalDataset(Dataset):
                 continue
 
             # 向量化判断 target 之前是否已经有可用兴趣历史，避免逐行 append 拖慢全量构造。
+            # target_position 是全局排序后的绝对位置，history_positions 是满足 watch_ratio 条件的兴趣历史位置列表。
             history_ends = np.searchsorted(history_positions, target_positions, side="left")
             valid_target_positions = target_positions[history_ends > 0]
             if len(valid_target_positions) == 0:

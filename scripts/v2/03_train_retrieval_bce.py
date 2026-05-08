@@ -64,7 +64,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--weight-decay", type=float, default=1e-4)
     parser.add_argument("--dropout", type=float, default=0.1)
-    parser.add_argument("--temperature", type=float, default=1.0)
+    parser.add_argument("--temperature", type=float, default=0.1)
     parser.add_argument("--text-proj-dim", type=int, default=256)
     parser.add_argument("--item-id-dim", type=int, default=64)
     parser.add_argument("--category-dim", type=int, default=32)

@@ -88,7 +88,7 @@ short-video-mmrec/
 └── outputs/
     └── v2/
         ├── embeddings/
-        └── retrieval_bce_full_e12_bs4096/
+        └── retrieval_bce_full_e12_bs4096_temp01/
 ```
 
 ## 5. V2 运行流程
@@ -143,28 +143,33 @@ python scripts/v2/03_train_retrieval_bce.py \
   --embedding-config outputs/v2/embeddings/embedding_config.json \
   --train-samples data/processed/v2/behavior_samples_train.csv \
   --val-samples data/processed/v2/behavior_samples_val.csv \
-  --output-dir outputs/v2/retrieval_bce_full_e12_bs4096 \
+  --output-dir outputs/v2/retrieval_bce_full_e12_bs4096_temp01 \
   --batch-size 4096 \
-  --epochs 12
+  --epochs 12 \
+  --temperature 0.1 \
+  --max-train-samples -1 \
+  --max-val-samples -1 \
+  --num-workers 4 \
+  --log-every 50
 ```
 
 输出：
 
 ```text
-outputs/v2/retrieval_bce_full_e12_bs4096/retrieval_bce_best.pt
-outputs/v2/retrieval_bce_full_e12_bs4096/retrieval_bce_latest.pt
-outputs/v2/retrieval_bce_full_e12_bs4096/retrieval_bce_train_config.json
+outputs/v2/retrieval_bce_full_e12_bs4096_temp01/retrieval_bce_best.pt
+outputs/v2/retrieval_bce_full_e12_bs4096_temp01/retrieval_bce_latest.pt
+outputs/v2/retrieval_bce_full_e12_bs4096_temp01/retrieval_bce_train_config.json
 ```
 
 ### Step 4: 全量召回评估
 
 ```bash
 python scripts/v2/04_eval_full_recall.py \
-  --checkpoint outputs/v2/retrieval_bce_full_e12_bs4096/retrieval_bce_best.pt \
+  --checkpoint outputs/v2/retrieval_bce_full_e12_bs4096_temp01/retrieval_bce_best.pt \
   --train-samples data/processed/v2/behavior_samples_train.csv \
   --eval-samples data/processed/v2/behavior_samples_val.csv \
   --ks 10,20,50,100 \
-  --output outputs/v2/retrieval_bce_full_e12_bs4096/full_recall_val_metrics.json
+  --output outputs/v2/retrieval_bce_full_e12_bs4096_temp01/full_recall_val_metrics.json
 ```
 
 评估口径：
@@ -215,19 +220,19 @@ score(user, item) = user_embedding · item_embedding
 当前最佳结果来自：
 
 ```text
-outputs/v2/retrieval_bce_full_e12_bs4096/full_recall_val_metrics.json
+outputs/v2/retrieval_bce_full_e12_bs4096_temp01/full_recall_val_metrics.json
 ```
 
 评估用户数为 1411，候选 item 数为 3327。
 
 | K | Recall@K | HitRate@K | NDCG@K | MRR@K |
 |---:|---:|---:|---:|---:|
-| 10 | 1.75% | 76.68% | 16.53% | 31.14% |
-| 20 | 3.32% | 91.00% | 16.12% | 32.17% |
-| 50 | 7.87% | 98.65% | 15.80% | 32.43% |
-| 100 | 15.37% | 99.86% | 16.97% | 32.45% |
+| 10 | 3.51% | 93.20% | 30.98% | 48.26% |
+| 20 | 5.75% | 97.17% | 27.15% | 48.54% |
+| 50 | 11.37% | 99.72% | 23.11% | 48.63% |
+| 100 | 19.16% | 100.00% | 22.64% | 48.64% |
 
-与 V1 纯文本 semantic 推荐相比，V2 引入行为监督后，召回结果更能反映用户观看偏好。相比热门召回基线，V2 在 HitRate@10、NDCG@10、Recall@100 等指标上均有明显提升。
+与 V1 纯文本 semantic 推荐相比，V2 引入行为监督后，召回结果更能反映用户观看偏好。相比同口径热门 / 随机召回基线，V2 的 Recall@10 约提升 6.69x / 8.57x，Recall@100 约提升 4.63x / 4.66x。
 
 ## 8. 当前版本定位
 
