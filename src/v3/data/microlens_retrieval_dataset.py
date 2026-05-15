@@ -42,6 +42,7 @@ class MultimodalFeatureCache:
     image: np.ndarray
     video: np.ndarray
 
+    # @classmethod：把方法绑定到类本身而不是具体对象，常用于写“从配置、文件、字典等创建对象”的工厂方法。
     @classmethod
     def from_config(cls, feature_config_path: str | Path) -> "MultimodalFeatureCache":
         config_path = resolve_project_path(feature_config_path)
@@ -55,9 +56,10 @@ class MultimodalFeatureCache:
             video=np.load(resolve_project_path(features["video"]["npy_path"]), mmap_mode="r"),
         )
 
-    @property
+    # @property：把无参方法包装成像属性一样访问，用于提供只读或计算得到的字段，例如 cache.text_dim 而不是 cache.text_dim()。
     def num_items(self) -> int:
         return int(self.text.shape[0])
+
 
     @property
     def text_dim(self) -> int:
@@ -113,7 +115,7 @@ class MicroLensRetrievalDataset(Dataset):
         target_samples_path: str | Path,
         item_ids_path: str | Path,
         history_samples_path: str | Path | None = None,
-        max_history_len: int = 50,
+        max_history_len: int = 20,
         num_negatives: int = 32,
         max_samples: int | None = None,
         seed: int = 42,

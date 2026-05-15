@@ -246,12 +246,11 @@ V3 已完成：
 
 - 更强的多模态融合结构，如 gated fusion、attention fusion；
 - 基于 watch time / like / comment 等更细粒度行为强度的用户建模；
-- LightGCN 协同过滤召回通道；
 - 多路召回融合与 reranker。
 
 ## 9. 后续计划
 
 - 引入 gated fusion 或 attention fusion，提升不同模态间的信息融合能力；
 - 将 V2 的行为监督 user tower 与 V3 的多模态 item encoder 进行融合；
-- 引入 LightGCN 协同过滤召回通道，补充交互图信号；
-- 在多模态召回结果上加入轻量 reranker，结合内容、协同过滤和行为特征优化 TopK 排序。
+- 与 V4 LightGCN 协同过滤召回通道进行多路召回融合；
+- 在融合召回结果上加入轻量 reranker，结合内容、协同过滤和行为特征优化 TopK 排序。

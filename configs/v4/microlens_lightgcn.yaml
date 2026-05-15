@@ -1,0 +1,31 @@
+data:
+  processed_dir: data/processed/v3/microlens_100k
+  item_ids: data/processed/v3/microlens_100k/item_ids.csv
+  train_samples: data/processed/v3/microlens_100k/behavior_samples_train.csv
+  val_samples: data/processed/v3/microlens_100k/behavior_samples_val.csv
+  test_samples: data/processed/v3/microlens_100k/behavior_samples_test.csv
+
+model:
+  embedding_dim: 128
+  num_layers: 3
+  normalize_output: false
+
+train:
+  batch_size: 4096
+  epochs: 20
+  lr: 0.001
+  weight_decay: 0.0001
+  max_train_samples: -1
+  max_val_samples: 50000
+  num_workers: 0
+  seed: 42
+  log_every: 50
+  device: auto
+
+eval:
+  ks: [10, 20, 50, 100]
+  user_batch_size: 512
+  max_eval_users: -1
+
+output:
+  dir: outputs/v4/microlens_100k/lightgcn_bpr

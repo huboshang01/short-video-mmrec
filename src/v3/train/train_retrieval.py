@@ -23,6 +23,7 @@ TRACKED_METRICS = ("loss", "accuracy", "pos_score", "neg_score", "score_margin")
 
 def move_batch_to_device(batch: dict[str, Any], device: torch.device) -> dict[str, Any]:
     """只移动小型 index/mask Tensor；大特征由 FeatureCache 按需 gather。"""
+    # Dataset 只返回 index/mask，因此这里不会搬运 text/image/video 大矩阵。
     return {key: value.to(device) if torch.is_tensor(value) else value for key, value in batch.items()}
 
 
@@ -34,20 +35,25 @@ def encode_retrieval_batch(
     device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """统一 V3 双塔前向路径。"""
+    # batch 中只有 item index；真正的多模态特征在下面通过 FeatureCache 拉取。
     history_indices = batch["history_item_indices"]
     target_indices = batch["target_item_index"]
     negative_indices = batch["negative_item_indices"]
 
+    # 历史 item: index -> text/image/video 特征 -> item tower -> history item embeddings。
     history_features = feature_cache.gather(history_indices, device=device)
     history_item_embs = item_tower.encode_item(**history_features, item_indices=history_indices)
+    # user tower 使用 mask 忽略 padding，只聚合真实历史 item。
     user_embs = user_tower.encode_user(
         history_item_embs=history_item_embs,
         history_mask=batch["history_mask"],
     )
 
+    # 正样本 item 编码，形状通常为 [B, D]。
     target_features = feature_cache.gather(target_indices, device=device)
     positive_item_embs = item_tower.encode_item(**target_features, item_indices=target_indices)
 
+    # 负样本 item 编码，形状通常为 [B, K, D]。
     negative_features = feature_cache.gather(negative_indices, device=device)
     negative_item_embs = item_tower.encode_item(**negative_features, item_indices=negative_indices)
     return user_embs, positive_item_embs, negative_item_embs
@@ -60,6 +66,7 @@ def _new_metric_sums() -> dict[str, float]:
 def _accumulate_metrics(metric_sums: dict[str, float], metrics: dict[str, float], batch_size: int) -> None:
     """按样本数加权累加，避免最后一个小 batch 扭曲 epoch 均值。"""
     for metric_name in TRACKED_METRICS:
+        # batch 指标先乘 batch_size，最后再除总样本数得到 epoch 平均。
         metric_sums[metric_name] += float(metrics[metric_name]) * batch_size
 
 
@@ -102,6 +109,7 @@ def train_one_epoch_sampled_softmax(
         batch_size = int(batch["target_item_index"].numel())
 
         optimizer.zero_grad(set_to_none=True)
+        # 将 history/target/negative 的 index batch 编码成三组召回向量。
         user_embs, positive_item_embs, negative_item_embs = encode_retrieval_batch(
             item_tower=item_tower,
             user_tower=user_tower,
@@ -109,12 +117,14 @@ def train_one_epoch_sampled_softmax(
             batch=batch,
             device=device,
         )
+        # sampled softmax: 每个用户在 1 个正样本 + K 个负样本中识别正样本。
         loss, metrics = sampled_softmax_loss(
             user_embs=user_embs,
             positive_item_embs=positive_item_embs,
             negative_item_embs=negative_item_embs,
             temperature=temperature,
         )
+        # 反向传播同时更新 item tower 和 user tower。
         loss.backward()
         optimizer.step()
 
@@ -145,6 +155,7 @@ def evaluate_sampled_softmax(
     for batch in pbar:
         batch = move_batch_to_device(batch, device)
         batch_size = int(batch["target_item_index"].numel())
+        # 验证阶段复用同一条前向路径，但 no_grad + eval 模式不更新参数。
         user_embs, positive_item_embs, negative_item_embs = encode_retrieval_batch(
             item_tower=item_tower,
             user_tower=user_tower,
@@ -178,6 +189,7 @@ def save_retrieval_checkpoint(
     """保存 V3 召回模型 checkpoint。"""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    # checkpoint 保存模型权重、优化器状态、指标和完整配置，便于继续训练或独立评估。
     torch.save(
         {
             "epoch": int(epoch),

@@ -11,12 +11,14 @@
 | V1 | Text Semantic Recall Baseline | KuaiRec 2.0 | BGE 文本向量 + FAISS 语义索引 + I2I / Q2I / U2I 召回 |
 | V2 | Behavior-Aware Semantic Retrieval | KuaiRec 2.0 | 多特征 Item Tower + 时序感知 User Tower + pointwise BCE 双塔训练 |
 | V3 | Multimodal Item Representation | MicroLens-100K | BGE-M3 + CLIP-RN50 + VideoMAE 多模态 Item Encoder + sampled softmax |
+| V4 | LightGCN Collaborative Recall | MicroLens-100K | 用户-短视频交互图 + LightGCN 协同过滤召回 + BPR 训练 |
 
 详细文档：
 
 - [SV-Recall V1: 基于 KuaiRec 的短视频内容语义召回与用户兴趣推荐最小闭环](docs/V1_minimal_semantic_recall.md)
 - [SV-Recall V2: 基于强文本表征与行为监督的短视频语义召回模型](docs/V2_behavior_aware_semantic_adapter.md)
 - [SV-Recall V3: 基于多模态内容理解的短视频 Item 表征与语义召回](docs/V3_multimodal_item_recall.md)
+- [SV-Recall V4: 基于 LightGCN 的短视频协同过滤召回通道](docs/V4_lightgcn_collaborative_recall.md)
 
 ## V1: 文本语义召回最小闭环
 
@@ -88,7 +90,29 @@ V3 基于 MicroLens-100K，引入官方预提取的 text / image / video 多模�
 | 50 | 9.57% | 9.96% | 2.82% | 1.23% |
 | 100 | 14.57% | 15.09% | 3.64% | 1.30% |
 
-V3 当前定位是多模态内容特征接入召回链路的 MVP 验证版本。由于 MicroLens-100K 候选池更大、每个用户 test 正反馈较少，且缺少显式负反馈，当前指标主要用于验证多模态 item 表征和召回训练闭环。
+V3 当前定位是多模态内容特征接入召回链路的完整训练与评估版本。由于 MicroLens-100K 候选池更大、每个用户 test 正反馈较少，且缺少显式负反馈，当前指标主要用于衡量多模态 item 表征和召回训练闭环的离线效果。
+
+## V4: LightGCN 协同过滤召回通道
+
+V4 复用 V3 的 MicroLens-100K 行为样本，在 train split 上构造用户-短视频二部图，训练 LightGCN 协同过滤召回模型。当前最佳版本为 50 epochs 训练结果，best checkpoint 出现在 epoch 43。
+
+核心设计：
+
+- 纯 ID 图协同过滤：user embedding + item embedding + LightGCN 图传播；
+- BPR 训练目标：对每个正反馈采样未交互负 item，优化正负排序间隔；
+- full-catalog ranking：在全量候选 item 上评估协同过滤召回效果；
+- 与 V3 互补：V3 提供内容语义召回，V4 提供交互图召回。
+
+当前 V4 在 100,000 名测试用户、19,738 个候选 item 上完成 full-catalog 评估：
+
+| K | Recall@K | HitRate@K | NDCG@K | MRR@K |
+|---:|---:|---:|---:|---:|
+| 10 | 2.08% | 2.14% | 0.98% | 0.66% |
+| 20 | 3.80% | 3.91% | 1.42% | 0.79% |
+| 50 | 7.27% | 7.53% | 2.11% | 0.90% |
+| 100 | 11.69% | 12.04% | 2.84% | 0.96% |
+
+V4 是协同过滤召回通道的完整离线版本，后续可继续扩展为 V3 + V4 多路召回融合。
 
 ## Project Structure
 
@@ -96,7 +120,8 @@ V3 当前定位是多模态内容特征接入召回链路的 MVP 验证版本。
 short-video-mmrec/
 ├── configs/
 │   ├── v2/
-│   └── v3/
+│   ├── v3/
+│   └── v4/
 ├── data/
 │   ├── raw/
 │   └── processed/
@@ -106,23 +131,27 @@ short-video-mmrec/
 ├── docs/
 │   ├── V1_minimal_semantic_recall.md
 │   ├── V2_behavior_aware_semantic_adapter.md
-│   └── V3_multimodal_item_recall.md
+│   ├── V3_multimodal_item_recall.md
+│   └── V4_lightgcn_collaborative_recall.md
 ├── outputs/
 │   ├── v1/
 │   ├── v2/
-│   └── v3/
+│   ├── v3/
+│   └── v4/
 ├── scripts/
 │   ├── v1/
 │   ├── v2/
-│   └── v3/
+│   ├── v3/
+│   └── v4/
 └── src/
     ├── v2/
-    └── v3/
+    ├── v3/
+    └── v4/
 ```
 
 ## Environment
 
-V1 / V2 / V3 共用 Python + PyTorch 生态，主要依赖：
+V1 / V2 / V3 / V4 共用 Python + PyTorch 生态，主要依赖：
 
 - PyTorch
 - pandas / numpy
@@ -153,11 +182,11 @@ pip install -r requirements-v2.txt
 - 文本语义召回 baseline；
 - 行为监督双塔召回模型；
 - 多模态 item 表征与召回训练；
+- LightGCN 协同过滤召回通道；
 - full-catalog 离线召回评估。
 
 后续可继续扩展：
 
-- LightGCN 协同过滤召回通道；
 - GRU / Transformer 用户序列兴趣建模；
-- 多路召回融合与轻量 reranker；
+- V3 多模态召回 + V4 协同过滤召回的多路融合与轻量 reranker；
 - API 服务化与可视化 Demo。
