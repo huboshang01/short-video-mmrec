@@ -1,0 +1,11 @@
+numpy
+pandas
+pyyaml
+tqdm
+faiss-cpu
+sentence-transformers
+torch
+transformers
+accelerate
+qwen-vl-utils
+peft

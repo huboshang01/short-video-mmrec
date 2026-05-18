@@ -1,0 +1,16 @@
+data:
+  profiles_clean: data/processed/v5/microlens_100k/profiles_clean.jsonl
+  profile_text: data/processed/v5/microlens_100k/profile_text.csv
+  embedding_dir: outputs/v5/microlens_100k/embeddings
+
+embedding:
+  model_name: BAAI/bge-m3
+  batch_size: 64
+  max_seq_length: 512
+  normalize_embeddings: true
+  device: auto
+
+output:
+  item_ids: outputs/v5/microlens_100k/embeddings/profile_item_ids.npy
+  embeddings: outputs/v5/microlens_100k/embeddings/profile_embeddings.npy
+  config: outputs/v5/microlens_100k/embeddings/profile_embedding_config.json

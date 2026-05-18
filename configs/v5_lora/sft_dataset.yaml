@@ -1,0 +1,15 @@
+data:
+  profile_inputs: data/processed/v5/microlens_100k/profile_inputs.jsonl
+  teacher_profiles: data/processed/v5_lora/microlens_100k/retrieval_aware_teacher_profiles.jsonl
+  output_dir: data/processed/v5_lora/microlens_100k
+  dataset_info: data/processed/v5_lora/microlens_100k/dataset_info.json
+
+split:
+  train_ratio: 0.90
+  val_ratio: 0.05
+  seed: 2026
+  max_items: -1
+
+dataset:
+  name_prefix: v5_lora
+  system_prompt: 你是短视频推荐召回场景的多模态内容理解助手。

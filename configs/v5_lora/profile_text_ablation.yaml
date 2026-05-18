@@ -1,0 +1,31 @@
+data:
+  item_meta: data/processed/v3/microlens_100k/item_meta.csv
+  item_ids: data/processed/v3/microlens_100k/item_ids.csv
+  train_samples: data/processed/v3/microlens_100k/behavior_samples_train.csv
+  val_samples: data/processed/v3/microlens_100k/behavior_samples_val.csv
+  test_samples: data/processed/v3/microlens_100k/behavior_samples_test.csv
+  profiles_clean: data/processed/v5/microlens_100k/profiles_clean.jsonl
+
+ablation:
+  methods:
+    - title_only
+    - title_queries_topics
+    - title_queries_topics_summary
+    - full_reordered
+  eval_split: test
+  ks: [10, 20, 50, 100]
+  max_history_len: 50
+  user_batch_size: 256
+  max_eval_users: -1
+
+embedding:
+  model_name: BAAI/bge-m3
+  batch_size: 64
+  max_seq_length: 512
+  normalize_embeddings: true
+  device: auto
+
+output:
+  text_dir: data/processed/v5_lora/microlens_100k/profile_text_ablation
+  embedding_dir: outputs/v5_lora/microlens_100k/profile_text_ablation/embeddings
+  report: outputs/v5_lora/microlens_100k/profile_text_ablation/reports/ablation_recall_test_metrics.json

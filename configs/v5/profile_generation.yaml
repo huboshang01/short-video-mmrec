@@ -1,0 +1,42 @@
+data:
+  item_meta: data/processed/v3/microlens_100k/item_meta.csv
+  item_ids: data/processed/v3/microlens_100k/item_ids.csv
+  frames_dir: data/raw/microlens_100k/frame_archives/MicroLens-100k_frames_interval_1_number_5
+  processed_dir: data/processed/v5/microlens_100k
+  frame_manifest: data/processed/v5/microlens_100k/frame_manifest.csv
+  profile_inputs: data/processed/v5/microlens_100k/profile_inputs.jsonl
+  profiles_raw: data/processed/v5/microlens_100k/profiles_raw.jsonl
+  profiles_clean: data/processed/v5/microlens_100k/profiles_clean.jsonl
+  profile_text: data/processed/v5/microlens_100k/profile_text.csv
+  quality_report: data/processed/v5/microlens_100k/profile_quality_report.json
+
+frames:
+  expected_frames_per_item: 5
+  allowed_extensions: [".jpg", ".jpeg", ".png", ".webp"]
+  allow_incomplete_items: false
+
+generation:
+  # 本地自检用 mock；正式生成改成 qwen2_5_vl。
+  backend: mock
+  model_name: Qwen/Qwen2.5-VL-7B-Instruct
+  max_new_tokens: 512
+  temperature: 0.0
+  top_p: 0.9
+  device_map: auto
+  torch_dtype: auto
+  language: zh
+  max_items: -1
+  min_pixels: 200704
+  max_pixels: 802816
+
+profile_schema:
+  fields:
+    - summary
+    - main_topics
+    - visual_objects
+    - scene
+    - content_type
+    - style
+    - emotion
+    - target_audience
+    - search_queries

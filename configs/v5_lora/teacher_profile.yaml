@@ -1,0 +1,9 @@
+data:
+  item_meta: data/processed/v3/microlens_100k/item_meta.csv
+  profiles_clean: data/processed/v5/microlens_100k/profiles_clean.jsonl
+  teacher_profiles: data/processed/v5_lora/microlens_100k/retrieval_aware_teacher_profiles.jsonl
+  profile_text: data/processed/v5_lora/microlens_100k/retrieval_aware_teacher_profile_text.csv
+
+teacher:
+  max_items: -1
+  profile_text_mode: lora_compact

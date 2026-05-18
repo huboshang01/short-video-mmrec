@@ -1,0 +1,35 @@
+data:
+  item_meta: data/processed/v3/microlens_100k/item_meta.csv
+  item_ids: data/processed/v3/microlens_100k/item_ids.csv
+  train_samples: data/processed/v3/microlens_100k/behavior_samples_train.csv
+  val_samples: data/processed/v3/microlens_100k/behavior_samples_val.csv
+  test_samples: data/processed/v3/microlens_100k/behavior_samples_test.csv
+  feature_config: data/processed/v3/microlens_100k/feature_config.json
+  profiles_clean: data/processed/v5/microlens_100k/profiles_clean.jsonl
+  profile_item_ids: outputs/v5/microlens_100k/embeddings/profile_item_ids.npy
+  profile_embeddings: outputs/v5/microlens_100k/embeddings/profile_embeddings.npy
+  profile_index: outputs/v5/microlens_100k/indexes/profile_faiss.index
+  index_config: outputs/v5/microlens_100k/indexes/profile_faiss_config.json
+
+retrieval:
+  metric: cosine
+  ks: [10, 20, 50, 100]
+  max_history_len: 50
+  user_batch_size: 256
+  max_eval_users: -1
+  methods:
+    - title
+    - profile
+    - multimodal
+    - fusion
+  fusion_weights:
+    title: 0.3
+    profile: 0.5
+    image: 0.1
+    video: 0.1
+
+output:
+  index_dir: outputs/v5/microlens_100k/indexes
+  report_dir: outputs/v5/microlens_100k/reports
+  metrics: outputs/v5/microlens_100k/reports/profile_recall_test_metrics.json
+  case_study: outputs/v5/microlens_100k/reports/profile_case_study.json
