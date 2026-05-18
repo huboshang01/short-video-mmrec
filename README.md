@@ -141,30 +141,6 @@ V5 在 100,000 名测试用户、19,738 个候选 item 上完成 full-catalog �
 
 其中，LoRA Profile 相比 zero-shot Profile 的 Recall@100 相对提升 61.8%，并超过 title baseline；LoRA fusion 相比 V5 fusion 相对提升 9.1%。这说明 V5 将多模态大模型生成的内容 Profile 从解释性语义描述，进一步转化为可用于召回增强的推荐语义特征。
 
-V5 当前新增脚本：
-
-```text
-scripts/v5/
-├── download_microlens_100k_frames.sh
-├── 00_check_frames.py
-├── 01_build_profile_inputs.py
-├── 02_generate_profiles_qwen_vl.py
-├── 03_clean_profiles.py
-├── 04_encode_profile_embeddings.py
-├── 05_build_profile_faiss.py
-├── 06_eval_profile_recall.py
-└── 07_case_study.py
-
-scripts/v5_lora/
-├── 01_run_profile_text_ablation.py
-├── 02_build_retrieval_aware_teacher.py
-├── 03_build_llamafactory_sft_dataset.py
-├── 04_train_lora.sh
-├── 05_generate_lora_profiles.py
-├── 06_eval_lora_profiles.py
-└── 07_case_study_lora.py
-```
-
 ## Project Structure
 
 ```text
